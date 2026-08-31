@@ -1,0 +1,47 @@
+# Initialize simulation
+atom_style	atomic
+units		metal
+read_data	after_relax.data
+
+mass		1 55.845
+
+pair_style	eam/alloy
+pair_coeff      * * ../potentials/Fe_Mishin2006.eam.alloy Fe
+
+# Setup standard output
+variable	avg_lxyz equal (lx+ly+lz)/3.0
+thermo_style	custom step temp pe etotal pxx pyy pzz v_avg_lxyz density
+thermo		100
+
+# Set up and run MD in NPT ensemble
+timestep	0.001
+neighbor	1.0 bin
+neigh_modify	every 5 delay 0 check yes 
+
+reset_timestep	0
+dump		1 all custom 1000 md_heat_dump.cfg id type x y z
+fix		1 all npt temp 300 300 0.1 aniso 0 0 1.0
+fix		avg all ave/time 5 1000 20000 c_thermo_temp v_avg_lxyz
+run		20000
+unfix		1
+variable	avg_T equal f_avg[1]
+variable	L equal f_avg[2]
+variable	L0 equal ${L}
+print		"Temp	Strain" file Record_thermal_exp.txt
+print		"${avg_T}	0.0" append Record_thermal_exp.txt
+unfix		avg
+
+variable	n loop 14
+label		heat
+variable	t equal 300+${n}*50
+fix		1 all npt temp ${t} ${t} 0.1 aniso 0 0 1.0
+fix		avg all ave/time 5 1000 20000 c_thermo_temp v_avg_lxyz
+run		20000
+unfix		1
+variable	avg_T equal f_avg[1]
+variable	strain equal f_avg[2]/${L0}-1.0
+print		"${avg_T}	${strain}" append Record_thermal_exp.txt
+unfix		avg
+
+next		n
+jump		in.heat.Fe heat

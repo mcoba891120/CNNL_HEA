@@ -1,0 +1,61 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+
+pair_style      snap
+pair_coeff      * * ../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo          100
+
+variable	full_bg equal $(lx)/51
+variable	half_bg equal ${full_bg}*0.5
+variable	bulk_lx equal 51*3
+variable	bulk_ly equal 54*1
+variable	bulk_lz equal 51*3
+
+variable 	del_zhi equal $(lz)*0.5
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+# 設定 B2 結構的週期長度
+variable period equal 51  # 根據實際 B2 週期設定
+
+# 計算區域範圍 (確保按照 ABAB 規律切割)
+variable x1_lo equal 0
+variable x1_hi equal ${period}*floor(lx/(${period}*4))
+
+variable x2_lo equal ${x1_hi}
+variable x2_hi equal ${x1_hi} + ${period}*floor(lx/(${period}*4))
+
+variable x3_lo equal ${x2_hi}
+variable x3_hi equal ${x2_hi} + ${period}*floor(lx/(${period}*4))
+
+variable x4_lo equal ${x3_hi}
+variable x4_hi equal ${lx}
+
+# 定義四個區域
+region region1 block ${x1_lo} ${x1_hi} INF INF INF INF units box
+region region2 block ${x2_lo} ${x2_hi} INF INF INF INF units box
+region region3 block ${x3_lo} ${x3_hi} INF INF INF INF units box
+region region4 block ${x4_lo} ${x4_hi} INF INF INF INF units box
+
+group group1 region region1
+group group2 region region2
+group group3 region region3
+group group4 region region4
+
+
+# 刪除區域 2 的原子
+delete_atoms group group2
+write_data HEA_init_edge1.data nocoeff
+
+# 刪除區域 3 的原子
+read_data perfect_B2.data
+delete_atoms group group3
+write_data HEA_init_edge2.data nocoeff

@@ -1,0 +1,204 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../neb_3.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+# 獲取初始盒子尺寸並記錄
+variable	initial_zhi equal bound(all,zmax)
+variable	initial_zlo equal bound(all,zmin)
+print "初始盒子: zmin=${initial_zlo}, zmax=${initial_zhi}"
+
+###########################################
+# 第一階段：寬鬆約束 (6Å 固定層)
+###########################################
+print "=== 第一階段：寬鬆約束 ==="
+variable	upp_zhi_stage1 equal ${initial_zhi}
+variable	upp_zlo_stage1 equal ${initial_zhi}-6.0
+variable	bot_zlo_stage1 equal ${initial_zlo}
+variable	bot_zhi_stage1 equal ${initial_zlo}+6.0
+
+region		fix_upp_stage1 block EDGE EDGE EDGE EDGE ${upp_zlo_stage1} ${upp_zhi_stage1} units box
+region		fix_bot_stage1 block EDGE EDGE EDGE EDGE ${bot_zlo_stage1} ${bot_zhi_stage1} units box
+region		constrain_stage1 union 2 fix_upp_stage1 fix_bot_stage1
+group		constrain_stage1 region constrain_stage1
+group	    mobile_stage1 subtract all constrain_stage1
+fix		f1 constrain_stage1 setforce NULL NULL 0
+
+variable n_constrain_1 equal count(constrain_stage1)
+print "第一階段約束原子數: ${n_constrain_1}"
+
+minimize	0.0 0.05 2000 2000
+
+unfix f1
+group constrain_stage1 delete
+group mobile_stage1 delete
+
+###########################################
+# 第二階段：中等約束 (5Å 固定層)
+###########################################
+print "=== 第二階段：中等約束 ==="
+variable	current_zhi equal bound(all,zmax)
+variable	current_zlo equal bound(all,zmin)
+variable	upp_zhi_stage2 equal ${current_zhi}
+variable	upp_zlo_stage2 equal ${current_zhi}-5.0
+variable	bot_zlo_stage2 equal ${current_zlo}
+variable	bot_zhi_stage2 equal ${current_zlo}+5.0
+
+region		fix_upp_stage2 block EDGE EDGE EDGE EDGE ${upp_zlo_stage2} ${upp_zhi_stage2} units box
+region		fix_bot_stage2 block EDGE EDGE EDGE EDGE ${bot_zlo_stage2} ${bot_zhi_stage2} units box
+region		constrain_stage2 union 2 fix_upp_stage2 fix_bot_stage2
+group		constrain_stage2 region constrain_stage2
+group	    mobile_stage2 subtract all constrain_stage2
+fix		f2 constrain_stage2 setforce NULL NULL 0
+
+variable n_constrain_2 equal count(constrain_stage2)
+print "第二階段約束原子數: ${n_constrain_2}"
+
+minimize	0.0 0.03 3000 3000
+
+unfix f2
+group constrain_stage2 delete
+group mobile_stage2 delete
+
+###########################################
+# 第三階段：嚴格約束 (4Å 固定層)
+###########################################
+print "=== 第三階段：嚴格約束 ==="
+variable	final_zhi equal bound(all,zmax)
+variable	final_zlo equal bound(all,zmin)
+variable	upp_zhi_final equal ${final_zhi}
+variable	upp_zlo_final equal ${final_zhi}-4.0
+variable	bot_zlo_final equal ${final_zlo}
+variable	bot_zhi_final equal ${final_zlo}+4.0
+
+region		fix_upp_final block EDGE EDGE EDGE EDGE ${upp_zlo_final} ${upp_zhi_final} units box
+region		fix_bot_final block EDGE EDGE EDGE EDGE ${bot_zlo_final} ${bot_zhi_final} units box
+region		constrain_final union 2 fix_upp_final fix_bot_final
+group		constrain_final region constrain_final
+group	    mobile_final subtract all constrain_final
+fix		f3 constrain_final setforce NULL NULL 0
+
+variable n_constrain_3 equal count(constrain_final)
+print "第三階段約束原子數: ${n_constrain_3}"
+
+minimize	0.0 0.02 5000 1000
+
+write_data	HEA_opt_edge1.data nocoeff
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../neb_6.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+# 獲取初始盒子尺寸並記錄
+variable	initial_zhi equal bound(all,zmax)
+variable	initial_zlo equal bound(all,zmin)
+print "初始盒子: zmin=${initial_zlo}, zmax=${initial_zhi}"
+
+###########################################
+# 第一階段：寬鬆約束 (6Å 固定層)
+###########################################
+print "=== 第一階段：寬鬆約束 ==="
+variable	upp_zhi_stage1 equal ${initial_zhi}
+variable	upp_zlo_stage1 equal ${initial_zhi}-6.0
+variable	bot_zlo_stage1 equal ${initial_zlo}
+variable	bot_zhi_stage1 equal ${initial_zlo}+6.0
+
+region		fix_upp_stage1 block EDGE EDGE EDGE EDGE ${upp_zlo_stage1} ${upp_zhi_stage1} units box
+region		fix_bot_stage1 block EDGE EDGE EDGE EDGE ${bot_zlo_stage1} ${bot_zhi_stage1} units box
+region		constrain_stage1 union 2 fix_upp_stage1 fix_bot_stage1
+group		constrain_stage1 region constrain_stage1
+group	    mobile_stage1 subtract all constrain_stage1
+fix		f1 constrain_stage1 setforce NULL NULL 0
+
+variable n_constrain_1 equal count(constrain_stage1)
+print "第一階段約束原子數: ${n_constrain_1}"
+
+minimize	0.0 0.05 2000 2000
+
+unfix f1
+group constrain_stage1 delete
+group mobile_stage1 delete
+
+###########################################
+# 第二階段：中等約束 (5Å 固定層)
+###########################################
+print "=== 第二階段：中等約束 ==="
+variable	current_zhi equal bound(all,zmax)
+variable	current_zlo equal bound(all,zmin)
+variable	upp_zhi_stage2 equal ${current_zhi}
+variable	upp_zlo_stage2 equal ${current_zhi}-5.0
+variable	bot_zlo_stage2 equal ${current_zlo}
+variable	bot_zhi_stage2 equal ${current_zlo}+5.0
+
+region		fix_upp_stage2 block EDGE EDGE EDGE EDGE ${upp_zlo_stage2} ${upp_zhi_stage2} units box
+region		fix_bot_stage2 block EDGE EDGE EDGE EDGE ${bot_zlo_stage2} ${bot_zhi_stage2} units box
+region		constrain_stage2 union 2 fix_upp_stage2 fix_bot_stage2
+group		constrain_stage2 region constrain_stage2
+group	    mobile_stage2 subtract all constrain_stage2
+fix		f2 constrain_stage2 setforce NULL NULL 0
+
+variable n_constrain_2 equal count(constrain_stage2)
+print "第二階段約束原子數: ${n_constrain_2}"
+
+minimize	0.0 0.03 3000 3000
+
+unfix f2
+group constrain_stage2 delete
+group mobile_stage2 delete
+
+###########################################
+# 第三階段：嚴格約束 (4Å 固定層)
+###########################################
+print "=== 第三階段：嚴格約束 ==="
+variable	final_zhi equal bound(all,zmax)
+variable	final_zlo equal bound(all,zmin)
+variable	upp_zhi_final equal ${final_zhi}
+variable	upp_zlo_final equal ${final_zhi}-4.0
+variable	bot_zlo_final equal ${final_zlo}
+variable	bot_zhi_final equal ${final_zlo}+4.0
+
+region		fix_upp_final block EDGE EDGE EDGE EDGE ${upp_zlo_final} ${upp_zhi_final} units box
+region		fix_bot_final block EDGE EDGE EDGE EDGE ${bot_zlo_final} ${bot_zhi_final} units box
+region		constrain_final union 2 fix_upp_final fix_bot_final
+group		constrain_final region constrain_final
+group	    mobile_final subtract all constrain_final
+fix		f3 constrain_final setforce NULL NULL 0
+
+variable n_constrain_3 equal count(constrain_final)
+print "第三階段約束原子數: ${n_constrain_3}"
+
+minimize	0.0 0.02 5000 10000
+
+write_data	HEA_opt_edge2.data nocoeff
+
+dump		1 all custom 1 final.cfg id x y z
+dump_modify	1 sort id
+run		0

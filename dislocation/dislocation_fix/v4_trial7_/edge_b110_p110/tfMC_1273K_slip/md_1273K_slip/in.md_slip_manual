@@ -1,0 +1,89 @@
+atom_style      atomic 
+units           metal 
+boundary        p p f 
+read_data       ../after_relax.data
+ 
+variable	frz_zhi equal bound(all,zmax)-5
+variable	frz_zlo equal bound(all,zmin)+5
+region		frz_upp block $(xlo) $(xhi) $(ylo) $(yhi) ${frz_zhi} $(zhi) units box
+region		frz_bot block $(xlo) $(xhi) $(ylo) $(yhi) $(zlo) ${frz_zlo} units box
+group		push region frz_upp
+group		frz region frz_bot
+group		move subtract all push frz
+set		group frz vx 0.0 vy 0.0 vz 0.0
+set		group push vx 0.0 vy 0.0 vz 0.0
+compute		T_move move temp
+
+pair_style      snap
+pair_coeff      * * ../../../../../../potentials/HEA_v4_trial7.snapcoeff ../../../../../../potentials/HEA_v4_trial7.snapparam Ni Co Ti Zr 
+
+print		"strain  stress_xx  stressyy  stresszz  stressxy  stressxz  stressyz " file SS_curve.txt
+ 
+compute         sta all stress/atom NULL
+compute		vol_atom all voronoi/atom
+variable	va atom c_vol_atom[1]
+variable	sa_xx atom 1E-4*c_sta[1]/v_va
+variable	sa_yy atom 1E-4*c_sta[2]/v_va
+variable	sa_zz atom 1E-4*c_sta[3]/v_va
+variable	sa_xy atom 1E-4*c_sta[4]/v_va
+variable	sa_xz atom 1E-4*c_sta[5]/v_va
+variable	sa_yz atom 1E-4*c_sta[6]/v_va
+compute		sum_sta move reduce sum c_sta[1] c_sta[2] c_sta[3] c_sta[4] c_sta[5] c_sta[6]
+compute		sum_va move reduce sum v_va
+variable	sum_xx equal 1E-4*c_sum_sta[1]/c_sum_va
+variable	sum_yy equal 1E-4*c_sum_sta[2]/c_sum_va
+variable	sum_zz equal 1E-4*c_sum_sta[3]/c_sum_va
+variable	sum_xy equal 1E-4*c_sum_sta[4]/c_sum_va
+variable	sum_xz equal 1E-4*c_sum_sta[5]/c_sum_va
+variable	sum_yz equal 1E-4*c_sum_sta[6]/c_sum_va
+
+timestep	0.001
+fix		f1 push setforce 0.0 0.0 0.0
+fix		f2 frz setforce 0.0 0.0 0.0
+thermo          1000 
+thermo_style    custom step temp pe c_sum_sta[1] c_sum_sta[2] c_sum_sta[3] c_sum_sta[4] c_sum_sta[5] c_sum_sta[6] c_sum_va
+
+fix		1 move nvt temp 1273 1273 0.1 
+fix		2 all ave/time 10 500 20000 v_sum_xx v_sum_yy v_sum_zz v_sum_xy v_sum_xz v_sum_yz
+run		20000
+unfix		1
+variable	ave_xx equal f_2[1]
+variable	ave_yy equal f_2[2]
+variable	ave_zz equal f_2[3]
+variable	ave_xy equal f_2[4]
+variable	ave_xz equal f_2[5]
+variable	ave_yz equal f_2[6]
+print		"0.0000 ${ave_xx} ${ave_yy} ${ave_zz} ${ave_xy} ${ave_xz} ${ave_yz} " append SS_curve.txt
+unfix		2
+minimize	0.0 0.02 5000 10000
+reset_timestep  0
+dump            1 all custom 1 step_0.cfg id type x y z v_sa_xx v_sa_yy v_sa_zz v_sa_xy v_sa_xz v_sa_yz
+run             0
+undump          1
+
+variable        a loop 500
+label           loopa
+reset_timestep  0
+variable	strain equal 0.05*$a/(bound(all,zmax)-bound(all,zmin))
+displace_atoms  push move 0.05 0.0 0.0 units box
+reset_timestep  0
+fix		1 move nvt temp 1273 1273 0.1 
+fix		2 all ave/time 10 500 20000 v_sum_xx v_sum_yy v_sum_zz v_sum_xy v_sum_xz v_sum_yz
+run		20000
+unfix		1
+variable	ave_xx equal f_2[1]
+variable	ave_yy equal f_2[2]
+variable	ave_zz equal f_2[3]
+variable	ave_xy equal f_2[4]
+variable	ave_xz equal f_2[5]
+variable	ave_yz equal f_2[6]
+print		"${strain} ${ave_xx} ${ave_yy} ${ave_zz} ${ave_xy} ${ave_xz} ${ave_yz} " append SS_curve.txt
+unfix		2
+minimize	0.0 0.02 5000 10000
+reset_timestep  0
+dump            1 all custom 1 step_$a.cfg id type x y z v_sa_xx v_sa_yy v_sa_zz v_sa_xy v_sa_xz v_sa_yz
+run             0
+undump          1
+
+next            a
+jump            in.md_slip_manual loopa

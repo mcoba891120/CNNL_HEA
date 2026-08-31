@@ -1,0 +1,71 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../min/HEA_opt_11.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable	upp_zhi equal bound(all,zmax)
+variable	upp_zlo equal ${upp_zhi}-4.0
+variable	bot_zlo equal bound(all,zmin)
+variable	bot_zhi equal ${bot_zlo}+4.0
+region		fix_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		fix_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+region		constrain union 2 fix_upp fix_bot
+group		constrain region constrain
+group	    	mobile subtract all constrain
+fix		f constrain setforce NULL NULL 0
+
+minimize	0.0 0.05 5000 10000
+
+write_data	HEA_opt_edge1.data nocoeff
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../min/HEA_opt_15.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable	upp_zhi equal bound(all,zmax)
+variable	upp_zlo equal ${upp_zhi}-4.0
+variable	bot_zlo equal bound(all,zmin)
+variable	bot_zhi equal ${bot_zlo}+4.0
+region		fix_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		fix_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+region		constrain union 2 fix_upp fix_bot
+group		constrain region constrain
+group	    	mobile subtract all constrain
+fix		f constrain setforce NULL NULL 0
+
+minimize	0.0 0.05 5000 10000
+
+write_data	HEA_opt_edge2.data nocoeff
+
+dump		1 all custom 1 final.cfg id x y z
+dump_modify	1 sort id
+run		0
+

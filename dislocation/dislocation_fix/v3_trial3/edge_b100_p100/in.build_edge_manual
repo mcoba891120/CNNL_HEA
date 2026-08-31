@@ -1,0 +1,33 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       Before_edge.lmp
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+
+###############################
+
+variable	dmove equal 0.5*$(lx)/51
+
+variable 	del_zhi equal $(lz)*0.5
+variable 	del_xlo equal $(lx)*0.5-${dmove}
+variable 	del_xhi equal $(lx)*0.5+${dmove}-0.5-0.3
+region 		del block ${del_xlo} ${del_xhi} INF INF $(zlo) ${del_zhi} units box
+region 		regL block 0 ${del_xlo} INF INF $(zlo) ${del_zhi} units box
+region 		regR block ${del_xhi} $(lx) INF INF $(zlo) ${del_zhi} units box
+group 		del region del
+group 		regL region regL
+group 		regR region regR
+
+delete_atoms 	group del
+write_data 	temp1.data nocoeff
+displace_atoms 	regL ramp x 0 ${dmove} x $(xlo) ${del_xlo} units box
+displace_atoms 	regR ramp x -${dmove} 0 x ${del_xhi} $(xhi) units box
+write_data 	temp2.data nocoeff
+
+write_data HEA_init_edge.data nocoeff
+
+

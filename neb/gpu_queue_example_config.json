@@ -1,0 +1,22 @@
+{
+  "description": "Example configuration for GPU Queue Manager",
+  "neb_root": "neb",
+  "log_file": "neb/gpu_queue.log",
+  "slip_systems": [
+    "edge_b100_p100_300K",
+    "edge_b100_p110_300K",
+    "screw_b100_p100_300K"
+  ],
+  "samples": [
+    "sample1"
+  ],
+  "scan_interval": 30,
+  "lammps_executables": {
+    "a100": "/home/cnnltmp01/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_a100",
+    "v100": "/home/cnnltmp01/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_v100"
+  },
+  "snap_files": {
+    "coeff": "../potentials/HEA_v3_trial3.snapcoeff",
+    "param": "../potentials/HEA_v3_trial3.snapparam"
+  }
+}

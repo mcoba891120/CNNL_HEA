@@ -1,0 +1,91 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../neb_4.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable	upp_zhi equal bound(all,zmax)+1
+variable	upp_zlo equal ${upp_zhi}-4.0
+variable	bot_zlo equal bound(all,zmin)-1
+variable	bot_zhi equal ${bot_zlo}+4.0
+region		fix_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		fix_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+region		constrain union 2 fix_upp fix_bot
+group		constrain region constrain
+group	    	mobile subtract all constrain
+fix		f constrain setforce NULL NULL 0
+
+#velocity	mobile create 300.0 36954846 dist gaussian mom yes rot yes
+#fix		1 all nvt temp 300 300 0.1
+#run		5000
+#unfix		1
+
+minimize	0.0 0.05 5000 1000
+
+#fix				1 mobile tfmc 0.1 300 30678
+#run				50000
+#unfix			1
+#minimize	0.0 0.02 5000 10000
+
+write_data	HEA_opt_edge1.data nocoeff
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../neb_6.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable	upp_zhi equal bound(all,zmax)+1
+variable	upp_zlo equal ${upp_zhi}-4.0
+variable	bot_zlo equal bound(all,zmin)-1
+variable	bot_zhi equal ${bot_zlo}+4.0
+region		fix_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		fix_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+region		constrain union 2 fix_upp fix_bot
+group		constrain region constrain
+group	    	mobile subtract all constrain
+fix		f constrain setforce NULL NULL 0
+
+#velocity	mobile create 300.0 36954846 dist gaussian mom yes rot yes
+#fix		1 all nvt temp 300 300 0.1
+#run		5000
+#unfix		1
+
+minimize	0.0 0.05 5000 10000
+
+#fix				2 mobile tfmc 0.1 300 30678
+#run				50000
+#unfix			2
+#minimize	0.0 0.02 5000 10000
+
+write_data	HEA_opt_edge2.data nocoeff
+
+dump		1 all custom 1 final.cfg id x y z
+dump_modify	1 sort id
+run		0
+

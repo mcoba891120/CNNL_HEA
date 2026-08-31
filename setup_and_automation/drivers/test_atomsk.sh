@@ -1,0 +1,4 @@
+COOL=123
+NICE=456
+# show COOL_NICE
+echo "COOL_NICE: ${COOL}_${NICE}"

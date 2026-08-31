@@ -1,0 +1,31 @@
+{
+  "next_jobs": [
+    {
+      "slip_system": "edge_b100_p100_300K",
+      "sample": "sample1",
+      "start": 5,
+      "end": 7,
+      "loops": 15,
+      "account": "MST114385"
+    },
+    {
+      "slip_system": "edge_b100_p110_300K",
+      "sample": "sample1",
+      "start": 3,
+      "end": 8,
+      "loops": 12,
+      "account": "MST114385"
+    },
+    {
+      "slip_system": "screw_b111_p110_330K",
+      "sample": "sample1",
+      "start": 10,
+      "end": 15,
+      "loops": 20,
+      "account": "MST114385"
+    }
+  ]
+}
+
+
+

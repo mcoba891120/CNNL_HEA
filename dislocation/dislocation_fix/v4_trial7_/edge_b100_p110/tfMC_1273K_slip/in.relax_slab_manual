@@ -1,0 +1,50 @@
+atom_style      atomic
+units           metal
+boundary        p p f
+read_data       init_slab.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+###############################
+variable	frz_zhi equal bound(all,zmax)-5
+variable	frz_zlo equal bound(all,zmin)+5
+region		frz_upp block $(xlo) $(xhi) $(ylo) $(yhi) ${frz_zhi} $(zhi) units box
+region		frz_bot block $(xlo) $(xhi) $(ylo) $(yhi) $(zlo) ${frz_zlo} units box
+group		frz_upp region frz_upp
+group		frz_bot region frz_bot
+group		frz union frz_upp frz_bot
+group		mov subtract all frz
+compute		movT mov temp
+
+pair_style      snap 
+pair_coeff      * * ../../../../../potentials/HEA_v4_trial7.snapcoeff ../../../../../potentials/HEA_v4_trial7.snapparam Ni Co Ti Zr 
+
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo          100
+thermo_style	custom step c_movT pe pxx pyy pzz lx ly 
+velocity	all create 1273 123456 dist gaussian mom yes rot yes 
+set		group frz vz 0.0
+timestep	0.001
+
+variable	lenx equal lx
+variable	leny equal ly
+dump		1 all custom 1000 md_dump.cfg id type x y z 
+fix		m all momentum 10 linear 1 1 0
+fix		f frz setforce NULL NULL 0
+fix		1 frz nve
+fix		2 mov npt temp 1273 1273 0.1 x 0.0 0.0 1.0 y 0.0 0.0 1.0
+fix_modify	2 temp movT
+fix		avg all ave/time 20 1000 100000 v_lenx v_leny
+run		100000
+undump		1
+unfix		1
+unfix		2
+variable	newxhi equal f_avg[1]
+variable	newyhi equal f_avg[2]
+change_box	all x final 0 ${newxhi} y final 0 ${newyhi} remap units box
+unfix		avg
+minimize	0.0 0.02 5000 10000
+write_data	after_relax.data nocoeff

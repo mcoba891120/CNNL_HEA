@@ -1,0 +1,184 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../neb_1.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+###########################################
+# 步驟 1：分析結構並確定固定原子 ID
+###########################################
+print "=== 分析結構確定固定原子 ID ==="
+
+# 計算初始盒子尺寸
+variable zmax_init equal bound(all,zmax)
+variable zmin_init equal bound(all,zmin)
+variable zrange equal ${zmax_init}-${zmin_init}
+print "初始盒子: zmin=${zmin_init}, zmax=${zmax_init}, 範圍=${zrange}"
+
+# 設定固定層厚度 (4Å)
+variable fix_thickness equal 4.0
+variable top_threshold equal ${zmax_init}-${fix_thickness}
+variable bot_threshold equal ${zmin_init}+${fix_thickness}
+print "固定閾值: 頂部<${top_threshold}, 底部>${bot_threshold}"
+
+# 基於 z 座標創建初始固定原子群組
+compute zpos all property/atom z
+compute atomids all property/atom id
+
+# 創建頂部和底部固定原子群組
+region top_region block INF INF INF INF ${top_threshold} INF units box
+region bot_region block INF INF INF INF INF ${bot_threshold} units box
+group top_atoms region top_region
+group bot_atoms region bot_region
+group constrain_atoms union top_atoms bot_atoms
+group mobile_atoms subtract all constrain_atoms
+
+# 記錄固定原子數和 ID 範圍
+variable n_constrain equal count(constrain_atoms)
+variable n_mobile equal count(mobile_atoms)
+print "固定原子數: ${n_constrain}, 可動原子數: ${n_mobile}"
+
+# 輸出固定原子 ID 列表供驗證
+dump fixed_list constrain_atoms custom 1 fixed_atom_ids.txt id type x y z
+run 0
+undump fixed_list
+
+###########################################
+# 步驟 2：第一階段優化 (使用 ID 固定約束)
+###########################################
+print "=== 第一階段：基於 ID 的約束優化 ==="
+
+# 使用基於 ID 的固定約束 (這些原子 ID 在整個過程中保持不變)
+fix constrain_fix constrain_atoms setforce NULL NULL 0
+
+# 驗證約束設定
+variable n_constrain_check equal count(constrain_atoms)
+print "約束驗證: ${n_constrain_check} 個原子被固定"
+
+# 第一階段優化 (寬鬆標準)
+minimize 0.0 0.05 3000 5000
+
+print "第一階段完成"
+
+###########################################
+# 步驟 3：第二階段精細優化
+###########################################
+print "=== 第二階段：精細優化 ==="
+
+# 相同的約束 (原子 ID 不變)
+minimize 0.0 0.02 5000 10000
+
+# 最終驗證
+variable n_final_constrain equal count(constrain_atoms)
+variable final_energy equal pe
+print "最終約束原子數: ${n_final_constrain}"
+print "最終能量: ${final_energy}"
+
+write_data	HEA_opt_edge1.data nocoeff
+
+# 清除第一個結構
+unfix constrain_fix
+group constrain_atoms delete
+group mobile_atoms delete
+group top_atoms delete
+group bot_atoms delete
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../neb_6.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+###########################################
+# 重複相同的 ID 約束策略 (第二個結構)
+###########################################
+print "=== 第二個結構：基於 ID 的約束 ==="
+
+# 計算初始盒子尺寸
+variable zmax_init equal bound(all,zmax)
+variable zmin_init equal bound(all,zmin)
+variable zrange equal ${zmax_init}-${zmin_init}
+print "初始盒子: zmin=${zmin_init}, zmax=${zmax_init}, 範圍=${zrange}"
+
+# 設定固定層厚度 (4Å)
+variable fix_thickness equal 4.0
+variable top_threshold equal ${zmax_init}-${fix_thickness}
+variable bot_threshold equal ${zmin_init}+${fix_thickness}
+print "固定閾值: 頂部<${top_threshold}, 底部>${bot_threshold}"
+
+# 基於 z 座標創建固定原子群組
+compute zpos all property/atom z
+compute atomids all property/atom id
+
+region top_region block INF INF INF INF ${top_threshold} INF units box
+region bot_region block INF INF INF INF INF ${bot_threshold} units box
+group top_atoms region top_region
+group bot_atoms region bot_region
+group constrain_atoms union top_atoms bot_atoms
+group mobile_atoms subtract all constrain_atoms
+
+variable n_constrain equal count(constrain_atoms)
+variable n_mobile equal count(mobile_atoms)
+print "固定原子數: ${n_constrain}, 可動原子數: ${n_mobile}"
+
+# 輸出固定原子 ID 列表
+dump fixed_list constrain_atoms custom 1 fixed_atom_ids_2.txt id type x y z
+run 0
+undump fixed_list
+
+###########################################
+# 第二個結構的兩階段優化
+###########################################
+print "=== 第二個結構：兩階段優化 ==="
+
+fix constrain_fix constrain_atoms setforce NULL NULL 0
+
+variable n_constrain_check equal count(constrain_atoms)
+print "約束驗證: ${n_constrain_check} 個原子被固定"
+
+# 第一階段
+minimize 0.0 0.05 3000 5000
+
+print "第二個結構第一階段完成"
+
+# 第二階段
+minimize 0.0 0.02 5000 10000
+
+variable n_final_constrain equal count(constrain_atoms)
+variable final_energy equal pe
+print "最終約束原子數: ${n_final_constrain}"
+print "最終能量: ${final_energy}"
+
+write_data	HEA_opt_edge2.data nocoeff
+
+###########################################
+# 產生 final.cfg 供 NEB 使用
+###########################################
+dump		1 all custom 1 final.cfg id x y z
+dump_modify	1 sort id
+run		0

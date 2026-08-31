@@ -1,0 +1,108 @@
+atom_style	atomic
+units		metal
+read_data	after_relax_bulk.data
+
+pair_style	snap
+pair_coeff	* * ../../../../../../potentials/HEA_v4_trial7.snapcoeff ../../../../../../potentials/HEA_v4_trial7.snapparam Ni Co Ti Zr Hf
+neighbor	1.0 bin
+neigh_modify	every 1 delay 0 check yes 
+
+variable	iter loop 500000
+variable	mc_temp equal 300
+variable	kT equal ${mc_temp}*8.617333E-05
+variable        naccept equal 0
+variable        increment equal v_naccept+1
+variable	rand_seed1 equal round(random(10000000,99999999,12345678))
+variable	e equal pe
+minimize	0.0 0.02 5000 10000
+variable	emin equal $e
+variable	estart equal $e
+variable	elast equal $e
+variable        boltzfactor equal "exp((v_elast - v_e) / v_kT )"
+variable	count_output equal 100
+variable	count_increment equal v_count_output+100
+thermo_style	custom step pe v_emin v_elast 
+thermo		50
+
+shell		mkdir mc_folder
+shell		cd mc_folder
+write_data	mc_last.data nocoeff
+label		loop
+reset_timestep	0
+variable	rand_seed2 equal round(random(10000000,99999999,v_rand_seed1))
+variable	rand equal random(0,1,v_rand_seed2)
+variable	curr_rand1 equal ${rand}
+variable	curr_rand2 equal ${rand}
+if		"${curr_rand1} <= 0.1" then &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 1 2 ke no" &
+		"variable sw_type string 'type_1-2'" &
+elif		"(${curr_rand1} > 0.1) && (${curr_rand1} <= 0.2)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 1 3 ke no" &
+		"variable sw_type string 'type_1-3'" &
+elif		"(${curr_rand1} > 0.2) && (${curr_rand1} <= 0.3)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 1 4 ke no" &
+		"variable sw_type string 'type_1-4'" &
+elif		"(${curr_rand1} > 0.3) && (${curr_rand1} <= 0.4)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 1 5 ke no" &
+		"variable sw_type string 'type_1-5'" &
+elif		"(${curr_rand1} > 0.4) && (${curr_rand1} <= 0.5)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 2 3 ke no" &
+		"variable sw_type string 'type_2-3'" &
+elif		"(${curr_rand1} > 0.5) && (${curr_rand1} <= 0.6)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 2 4 ke no" &
+		"variable sw_type string 'type_2-4'" &
+elif		"(${curr_rand1} > 0.6) && (${curr_rand1} <= 0.7)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 2 5 ke no" &
+		"variable sw_type string 'type_2-5'" &
+elif		"(${curr_rand1} > 0.7) && (${curr_rand1} <= 0.8)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 3 4 ke no" &
+		"variable sw_type string 'type_3-4'" &
+elif		"(${curr_rand1} > 0.8) && (${curr_rand1} <= 0.9)" &
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 3 5 ke no" &
+		"variable sw_type string 'type_3-5'" &
+else		&
+		"fix 1 all atom/swap 1 1 ${rand_seed2} 100000000 types 4 5 ke no" &
+		"variable sw_type string 'type_4-5'" 
+run 		1 post no
+unfix		1
+minimize	0.0 0.02 5000 10000
+run		0
+if		"$e <= ${emin}" then &
+		"variable emin equal $e" &
+		"write_data emin.data nocoeff" 
+		
+if		"$e <= ${elast}" then &
+		"print '${iter} ${e} ${emin} ${curr_rand2} ${boltzfactor} Accept1 ${sw_type}' append MC_record.txt" &
+		"variable elast equal $e" &
+		"jump ../in.swap.HEA accept" &
+elif		"${curr_rand2} < ${boltzfactor}" &
+		"print '${iter} ${e} ${emin} ${curr_rand2} ${boltzfactor} Accept2 ${sw_type}' append MC_record.txt" &
+		"variable elast equal $e" &
+		"jump ../in.swap.HEA accept" &
+else		&
+		"print '${iter} ${e} ${emin} ${curr_rand2} ${boltzfactor} Decline ${sw_type}' append MC_record.txt" &
+		"jump ../in.swap.HEA decline" 
+
+label		accept
+variable	naccept equal ${increment}
+write_data	mc_last.data nocoeff
+if		"${iter} == ${count_output}" then &
+		"write_data mc_loop_${iter}.data nocoeff" 
+
+jump		../in.swap.HEA final
+
+label		decline
+delete_atoms	group all
+read_data	mc_last.data add append
+
+label		final
+if		"${iter} == ${count_output}" then &
+		"variable count_output equal ${count_increment}"
+next		iter
+jump		../in.swap.HEA loop
+
+print           "MC stats:"
+print           "  starting energy = ${estart}"
+print           "  minimum energy of perfect lattice = ${emin}"
+print           "  accepted MC moves = ${naccept}"
+

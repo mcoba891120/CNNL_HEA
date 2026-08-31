@@ -1,0 +1,93 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../HEA_init_edge1.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+
+variable	upp_zhi equal bound(all,zmax)
+variable	upp_zlo equal ${upp_zhi}-4.0
+variable	bot_zlo equal bound(all,zmin)
+variable	bot_zhi equal ${bot_zlo}+4.0
+region		frz_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		frz_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+group		push_upp region frz_upp
+group		push_bot region frz_bot
+group		constrain union push_upp push_bot
+group		move subtract all constrain
+fix		f constrain setforce 0.0 0.0 0.0
+
+variable	strain equal 0.0
+compute         sta all stress/atom NULL
+compute		vol_atom all voronoi/atom
+variable	va atom c_vol_atom[1]
+compute		sum_sta move reduce sum c_sta[1] c_sta[2] c_sta[3] c_sta[4] c_sta[5] c_sta[6]
+compute		sum_va move reduce sum v_va
+variable	sum_xz equal 1E-4*c_sum_sta[5]/c_sum_va
+
+thermo          100 
+thermo_style    custom step pe pxx pyy pzz c_sum_sta[5] c_sum_va
+minimize	0.0 0.05 5000 10000
+
+print		"Curr_INIT: ${strain} ${sum_xz}"
+write_data	HEA_opt_edge1.data nocoeff
+
+clear
+#######################################################
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../HEA_init_edge2.data
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+
+variable	upp_zhi equal bound(all,zmax)
+variable	upp_zlo equal ${upp_zhi}-4.0
+variable	bot_zlo equal bound(all,zmin)
+variable	bot_zhi equal ${bot_zlo}+4.0
+region		frz_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		frz_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+group		push_upp region frz_upp
+group		push_bot region frz_bot
+group		constrain union push_upp push_bot
+group           move subtract all constrain 
+fix		f constrain setforce 0.0 0.0 0.0
+
+variable	strain equal 0.0
+compute         sta all stress/atom NULL
+compute		vol_atom all voronoi/atom
+variable	va atom c_vol_atom[1]
+compute		sum_sta move reduce sum c_sta[1] c_sta[2] c_sta[3] c_sta[4] c_sta[5] c_sta[6]
+compute		sum_va move reduce sum v_va
+variable	sum_xz equal 1E-4*c_sum_sta[5]/c_sum_va
+
+thermo          100 
+thermo_style    custom step pe pxx pyy pzz c_sum_sta[5] c_sum_va
+minimize	0.0 0.05 5000 10000
+
+print		"Curr_FINAL: ${strain} ${sum_xz}"
+write_data	HEA_opt_edge2.data nocoeff
+
+dump            1 all custom 1 final.cfg id x y z
+dump_modify     1 sort id
+run             0
+
+clear

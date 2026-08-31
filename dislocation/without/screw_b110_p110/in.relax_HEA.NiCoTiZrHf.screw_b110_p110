@@ -1,0 +1,54 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       ../structure/NiCoTiZrHf_screw_45696.lmp
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+###############################
+pair_style      snap 
+pair_coeff	* * ../../../potentials/HEA_var8.snapcoeff ../../../potentials/HEA_var8.snapparam Ni Co Ti Zr
+
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo          100
+thermo_style	custom step temp pe pxx pyy pzz
+
+# Define some properties you are instrested
+variable	lenx equal lx
+variable	leny equal ly
+variable	lenz equal lz
+
+compute		sta all stress/atom NULL
+compute		vol_atom all voronoi/atom
+variable	va atom c_vol_atom[1]
+variable	sa_xx atom 1E-4*c_sta[1]/v_va
+variable	sa_yy atom 1E-4*c_sta[2]/v_va
+variable	sa_zz atom 1E-4*c_sta[3]/v_va
+variable	sa_xy atom 1E-4*c_sta[4]/v_va
+variable	sa_xz atom 1E-4*c_sta[5]/v_va
+variable	sa_yz atom 1E-4*c_sta[6]/v_va
+variable	sa_hydro atom (v_sa_xx+v_sa_yy+v_sa_zz)/3.0
+variable	sa_von atom sqrt(0.5*((v_sa_xx-v_sa_yy)^2+(v_sa_yy-v_sa_zz)^2+(v_sa_zz-v_sa_xx)^2)+3.0*((v_sa_xy)^2+(v_sa_xz)^2+(v_sa_yz)^2))
+# Set up and run MD in NPT ensemble
+timestep	0.001
+neighbor	1.0 bin
+neigh_modify	every 5 delay 0 check yes 
+reset_timestep	0
+velocity	all create 300.0 12345678
+dump		1 all custom 5000 md_npt_dump.cfg id type x y z v_sa_hydro v_sa_von
+fix		1 all npt temp 300 300 0.1 aniso 0 0 1.0
+fix		avg all ave/time 10 1000 100000 v_lenx v_leny v_lenz
+run		100000
+undump		1
+unfix		1
+
+variable newlx equal f_avg[1]
+variable newly equal f_avg[2]
+variable newlz equal f_avg[3]
+change_box all x final 0 ${newlx} y final 0 ${newly} z final 0 ${newlz} remap units box
+unfix avg
+minimize	0.0 0.02 5000 10000
+write_data after_relax.data nocoeff

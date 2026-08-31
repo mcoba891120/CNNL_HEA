@@ -1,0 +1,27 @@
+# Initialize simulation
+atom_style	atomic
+units		metal
+read_data	after_relax.data
+
+mass		1 58.6934
+mass        2 58.933195
+mass        3 47.867
+mass        4 91.224
+mass        5 178.4899999
+
+pair_style	snap 
+pair_coeff	* * ../../../potentials/HEA_var8.snapcoeff ../../../potentials/HEA_var8.snapparam Ni Co Ti Zr Hf
+
+# Setup standard output
+thermo_style	custom step temp pe pxx pyy pzz density
+thermo		100
+
+# Set up and run minimization
+dump		1 all custom 100 min_dump_2.cfg id type x y z
+min_style	cg
+
+minimize	0.0 0.02 5000 10000
+
+
+write_data	after_min_2.data nocoeff
+

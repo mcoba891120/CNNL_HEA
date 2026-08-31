@@ -1,0 +1,52 @@
+# Initialize simulation
+atom_style	atomic
+units		metal
+read_data	./after_relax_input.data
+
+mass		1 58.6934
+mass        2 58.933195
+mass        3 47.867
+mass        4 91.224
+mass        5 178.49
+
+
+pair_style	snap
+pair_coeff	* * ../../../../../potentials/HEA_v5_trial3.snapcoeff ../../../../../potentials/HEA_v5_trial3.snapparam Ni Co Ti Zr Hf
+
+###################################################
+variable	target_T equal 900
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+
+variable	lenx equal lx
+variable	leny equal ly
+variable	lenz equal lz
+variable	strxx equal pxx
+variable	stryy equal pyy
+variable	strzz equal pzz
+
+###########################################
+variable	init_lx equal $(lx)
+variable	del_x equal ${init_lx}*(-0.0001)
+variable	comp_loop loop 21
+reset_timestep	0
+print		"strain  stressx  stressy  stressz  " file SS_curve_v5_trial3_9792_900k_b100p110.txt
+dump		1 all custom 1000 compress_dump_v5_trial3_9792_900k_b100p110.cfg id type x y z
+label		compress
+if		"${comp_loop} > 1" then &
+		"change_box	all x delta 0 ${del_x} remap units box"
+variable        strain equal 1-$(lx)/${init_lx}
+thermo_style	custom step temp pe pxx pyy pzz lx ly lz v_strain 
+fix		1 all npt temp ${target_T} ${target_T} 0.1 y 0.0 0.0 1.0 z 0.0 0.0 1.0
+fix		2 all ave/time 10 2000 100000 v_strxx v_stryy v_strzz 
+run 		100000
+unfix		1
+variable	ave_stressx equal f_2[1]*1E-4
+variable	ave_stressy equal f_2[2]*1E-4
+variable	ave_stressz equal f_2[3]*1E-4
+print		"${strain} ${ave_stressx} ${ave_stressy} ${ave_stressz} " append SS_curve_v5_trial3_9792_900k_b100p110.txt
+unfix		2
+write_data 	after_md_${comp_loop}.data nocoeff
+next		comp_loop
+jump		in.compress.NiCoTiZrHf.v5_trial3_9792_900k_b100p110 compress
+undump		1

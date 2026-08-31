@@ -1,0 +1,88 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.lmp
+replicate	3 1 3
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable        full_bg equal $(ly)/12
+variable        unitx equal $(lx)/51
+variable        bulk_lx equal 53.1583199771728*3
+variable        bulk_ly equal 53.0574230031922*1
+variable        bulk_lz equal 53.0701437545638*3
+
+variable reg_zhi equal $(lz)
+variable reg_zlo equal $(lz)*0.50
+variable reg_xlo equal $(lx)*0.25+${unitx}*6
+variable reg_xhi equal $(lx)*0.75+${unitx}*6
+region regL block ${reg_xlo} ${reg_xhi} EDGE EDGE ${reg_zlo} ${reg_zhi} units box
+group left region regL
+
+displace_atoms	left ramp y 0.0 ${full_bg} x ${reg_xlo} ${reg_xhi} units box
+set		group all image 0 0 0
+
+reset_atoms	id sort yes
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+change_box	all z delta -10 10 units box
+change_box	all z final 0 $(lz) remap units box
+write_data	HEA_init_screw1.data nocoeff
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.lmp
+replicate	3 1 3
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable        full_bg equal $(ly)/12
+variable        unitx equal $(lx)/51
+variable        bulk_lx equal 53.1583199771728*3
+variable        bulk_ly equal 53.0574230031922*1
+variable        bulk_lz equal 53.0701437545638*3
+
+variable reg_zhi equal $(lz)
+variable reg_zlo equal $(lz)*0.50
+variable reg_xlo equal $(lx)*0.25-${unitx}*6
+variable reg_xhi equal $(lx)*0.75-${unitx}*6
+region regL block ${reg_xlo} ${reg_xhi} EDGE EDGE ${reg_zlo} ${reg_zhi} units box
+region upp block EDGE EDGE EDGE EDGE ${reg_zlo} ${reg_zhi} units box
+group left region regL
+group upp region upp
+
+displace_atoms	left ramp y 0.0 ${full_bg} x ${reg_xlo} ${reg_xhi} units box
+#displace_atoms	upp move 0.0 0.5 0.0 units box
+set		group all image 0 0 0
+
+reset_atoms	id sort yes
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+change_box	all z delta -10 10 units box
+change_box	all z final 0 $(lz) remap units box
+write_data	HEA_init_screw2.data nocoeff
+

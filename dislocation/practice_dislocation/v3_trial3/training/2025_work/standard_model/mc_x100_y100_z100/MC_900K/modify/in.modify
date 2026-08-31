@@ -1,0 +1,25 @@
+atom_style	atomic
+units		metal
+read_data	../../../../standard_model/random_x100_y100_z100/sample1/MD_900K/after_relax_bulk.data
+
+pair_style	zero 1.0
+pair_coeff 	* *
+dump		1 all custom 1 temp.cfg id type x y z
+run		0
+undump		1
+clear
+
+########################
+atom_style	atomic
+units		metal
+read_data	../mc_folder/emin.data
+pair_style	snap
+pair_coeff	* * ../../../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor	1.0 bin
+neigh_modify	every 1 delay 0 check yes 
+
+thermo		10
+thermo_style	custom step pe
+read_dump	temp.cfg 0 x y z
+minimize	0.0 0.02 1000 5000
+write_data	emin_modify.data

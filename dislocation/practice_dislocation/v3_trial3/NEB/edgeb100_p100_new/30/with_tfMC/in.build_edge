@@ -1,0 +1,114 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.lmp
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable	full_bg equal $(lx)/51
+variable	half_bg equal ${full_bg}*0.5
+variable	bulk_lx equal 53.1567323116392*3
+variable	bulk_ly equal 18.7615739386272*1
+variable	bulk_lz equal 53.1569131250817*3
+
+
+variable 	del_zhi equal $(lz)*0.5
+variable 	del_xlo equal $(lx)*0.5-6*${full_bg}-${half_bg}+0.1
+variable 	del_xhi equal $(lx)*0.5-5*${full_bg}-${half_bg}+0.1
+region 		del block ${del_xlo} ${del_xhi} INF INF $(zlo) ${del_zhi} units box
+region 		regL block 0 ${del_xlo} INF INF $(zlo) ${del_zhi} units box
+region 		regR block ${del_xhi} $(lx) INF INF $(zlo) ${del_zhi} units box
+group 		del region del
+group 		regL region regL
+group 		regR region regR
+
+delete_atoms 	group del
+reset_atoms	id sort yes
+
+displace_atoms 	regL ramp x 0 ${half_bg} x $(xlo) ${del_xlo} units box
+displace_atoms 	regR ramp x -${half_bg} 0 x ${del_xhi} $(xhi) units box
+
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+change_box	all z delta -10 10 units box
+change_box	all z final 0 $(lz) remap units box
+variable	upp_zhi equal bound(all,zmax)
+variable	upp_zlo equal ${upp_zhi}-1.0
+variable	bot_zlo equal bound(all,zmin)
+variable	bot_zhi equal ${bot_zlo}+1.0
+region		fix_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		fix_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+region		constrain union 2 fix_upp fix_bot
+group		constrain region constrain
+fix		f constrain setforce NULL NULL 0
+#minimize	0.0 0.02 5000 10000
+write_data	HEA_init_edge1.data nocoeff
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.lmp
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable	full_bg equal $(lx)/51
+variable	half_bg equal ${full_bg}*0.5
+variable	bulk_lx equal 53.1567323116392*3
+variable	bulk_ly equal 18.7615739386272*1
+variable	bulk_lz equal 53.1569131250817*3
+
+variable 	del_zhi equal $(lz)*0.5
+variable 	del_xlo equal $(lx)*0.5+2*${full_bg}+${half_bg}+0.1
+variable 	del_xhi equal $(lx)*0.5+3*${full_bg}+${half_bg}+0.1
+region 		del block ${del_xlo} ${del_xhi} INF INF $(zlo) ${del_zhi} units box
+region 		regL block 0 ${del_xlo} INF INF $(zlo) ${del_zhi} units box
+region 		regR block ${del_xhi} $(lx) INF INF $(zlo) ${del_zhi} units box
+group 		del region del
+group 		regL region regL
+group 		regR region regR
+
+delete_atoms 	group del
+reset_atoms	id sort yes
+
+displace_atoms 	regL ramp x 0 ${half_bg} x $(xlo) ${del_xlo} units box
+displace_atoms 	regR ramp x -${half_bg} 0 x ${del_xhi} $(xhi) units box
+
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+change_box	all z delta -10 10 units box
+change_box	all z final 0 $(lz) remap units box
+variable	upp_zhi equal bound(all,zmax)
+variable	upp_zlo equal ${upp_zhi}-1.0
+variable	bot_zlo equal bound(all,zmin)
+variable	bot_zhi equal ${bot_zlo}+1.0
+region		fix_upp block EDGE EDGE EDGE EDGE ${upp_zlo} ${upp_zhi} units box
+region		fix_bot block EDGE EDGE EDGE EDGE ${bot_zlo} ${bot_zhi} units box
+region		constrain union 2 fix_upp fix_bot
+group		constrain region constrain
+fix		f constrain setforce NULL NULL 0
+#minimize	0.0 0.02 5000 10000
+write_data	HEA_init_edge2.data nocoeff
+

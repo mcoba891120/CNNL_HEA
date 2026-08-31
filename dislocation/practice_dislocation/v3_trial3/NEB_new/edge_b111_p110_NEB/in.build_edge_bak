@@ -1,0 +1,103 @@
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.lmp
+replicate	3 1 3
+displace_atoms	all move 0 0.5 0 units box
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable        full_bg equal $(lx)/30
+variable        half_bg equal ${full_bg}*0.5
+variable        bulk_lx equal 54.125820014767*3
+variable        bulk_ly equal 53.6214567300746*1
+variable        bulk_lz equal 53.0938435081585*3
+
+variable 	del_zhi equal $(lz)*0.5
+variable 	del_xlo equal $(lx)*0.5-5*${full_bg}-${half_bg}+0.1
+variable 	del_xhi equal $(lx)*0.5-4*${full_bg}-${half_bg}+0.1
+variable	delta_x equal ${full_bg}*4
+variable	move_xlo equal ${del_xlo}-${delta_x}
+variable	move_xhi equal ${del_xhi}+${delta_x}
+region 		del block ${del_xlo} ${del_xhi} INF INF $(zlo) ${del_zhi} units box
+region 		regL block ${move_xlo} ${del_xlo} INF INF $(zlo) ${del_zhi} units box
+region 		regR block ${del_xhi} ${move_xhi} INF INF $(zlo) ${del_zhi} units box
+group 		del region del
+group 		regL region regL
+group 		regR region regR
+
+delete_atoms 	group del
+reset_atoms	id sort yes
+
+displace_atoms 	regL ramp x 0 ${half_bg} x ${move_xlo} ${del_xlo} units box
+displace_atoms 	regR ramp x -${half_bg} 0 x ${del_xhi} ${move_xhi} units box
+
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+change_box	all z delta -10 10 units box
+change_box	all z final 0 $(lz) remap units box
+write_data	HEA_init_edge1.data nocoeff
+
+clear
+###############################################
+
+atom_style      atomic
+units           metal
+boundary        p p p
+read_data       perfect_B2.lmp
+replicate	3 1 3
+displace_atoms	all move 0 0.5 0 units box
+
+mass     1 58.6934
+mass     2 58.933195
+mass     3 47.867
+mass     4 91.224
+mass     5 178.49
+
+pair_style      snap
+pair_coeff      * * ../../../../../potentials/HEA_v3_trial3.snapcoeff ../../../../../potentials/HEA_v3_trial3.snapparam Ni Co Ti Zr Hf
+neighbor        1.0 bin
+neigh_modify    every 5 delay 0 check yes
+thermo		100
+
+variable        full_bg equal $(lx)/30
+variable        half_bg equal ${full_bg}*0.5
+variable        bulk_lx equal 54.125820014767*3
+variable        bulk_ly equal 53.6214567300746*1
+variable        bulk_lz equal 53.0938435081585*3
+
+variable 	del_zhi equal $(lz)*0.5
+variable 	del_xlo equal $(lx)*0.5+4*${full_bg}+${half_bg}+0.1
+variable 	del_xhi equal $(lx)*0.5+5*${full_bg}+${half_bg}+0.1
+variable	delta_x equal ${full_bg}*4
+variable	move_xlo equal ${del_xlo}-${delta_x}
+variable	move_xhi equal ${del_xhi}+${delta_x}
+region 		del block ${del_xlo} ${del_xhi} INF INF $(zlo) ${del_zhi} units box
+region 		regL block ${move_xlo} ${del_xlo} INF INF $(zlo) ${del_zhi} units box
+region 		regR block ${del_xhi} ${move_xhi} INF INF $(zlo) ${del_zhi} units box
+group 		del region del
+group 		regL region regL
+group 		regR region regR
+
+delete_atoms 	group del
+reset_atoms	id sort yes
+
+displace_atoms 	regL ramp x 0 ${half_bg} x ${move_xlo} ${del_xlo} units box
+displace_atoms 	regR ramp x -${half_bg} 0 x ${del_xhi} ${move_xhi} units box
+
+change_box	all x final 0 ${bulk_lx} y final 0 ${bulk_ly} z final 0 ${bulk_lz} remap units box
+
+change_box	all z delta -10 10 units box
+change_box	all z final 0 $(lz) remap units box
+write_data	HEA_init_edge2.data nocoeff
+

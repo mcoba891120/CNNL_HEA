@@ -1,0 +1,209 @@
+#!/bin/bash
+
+USER_DIR=$(pwd)
+read -p "Enter the simulation mode(relax, heat, compress, tension): " SIMULATION_MODE
+DEFAULT_ALLOY="NiCoTiZrHf"
+read -p "Enter the alloy (default: $DEFAULT_ALLOY): " ALLOY
+ALLOY=${ALLOY:-$DEFAULT_ALLOY}
+read -p "Enter the orientation(100, 110, 111)" ORIENTATION
+DEFAULT_ORIENTATION=100
+ORIENTATION=${ORIENTATION:-$DEFAULT_ORIENTATION}
+ALLOY_ORIENTATION="${ALLOY}_${ORIENTATION}"
+
+# Create simulation mode directory if it doesn't exist
+if [ ! -d "$SIMULATION_MODE" ]; then
+    mkdir -p "$SIMULATION_MODE"
+fi
+
+cd "$SIMULATION_MODE" || exit 1
+
+if [ ! -d "$ALLOY_ORIENTATION" ]; then
+    mkdir -p "$ALLOY_ORIENTATION"
+fi
+
+cd "$ALLOY_ORIENTATION" || exit 1
+mkdir -p "5quinary"
+cd "5quinary"
+
+read -p "Enter the session name: " SESSION_NAME
+read -p "Enter the duplication of X, Y, Z: " X Y Z
+if [ "$ORIENTATION" -eq 100 ]; then
+    TOTAL_ATOM=$((X*Y*Z*2))
+    ORIENTATION_STRING="[100] [010] [001]"
+elif [ "$ORIENTATION" -eq 111 ]; then
+    TOTAL_ATOM=$((X*Y*Z*12))
+    ORIENTATION_STRING="[111] [1-10] [11-2]"
+elif [ "$ORIENTATION" -eq 110 ]; then
+    TOTAL_ATOM=$((X*Y*Z*4))
+    # ORIENTATION_STRING="[110] [1-10] [001]"
+    ORIENTATION_STRING="[100] [01-1] [011]"
+else
+    echo "Invalid orientation"
+    exit 1
+fi
+
+read -p "Enter the PE number: " VAR_NUM
+read -p "Enter the number of runs: " RUN
+DEFAULT_TEMPERATURE="300"
+read -p "Enter the temperature(default: $DEFAULT_TEMPERATURE k): " TEMPERATURE
+TEMPERATURE=${TEMPERATURE:-$DEFAULT_TEMPERATURE}
+
+# Generate structure
+#------------------------------------------------------------------------------------------------#
+# STRUCTURE_NAME="${ALLOY}_${TOTAL_ATOM}"
+# mkdir -p structure
+mkdir -p "$SESSION_NAME"
+
+# if [ ! -f "structure/$STRUCTURE_NAME.pos" ]; then
+#     if [ -f "POSCAR" ]; then
+#         rm POSCAR
+#     fi
+
+#     echo "y" | atomsk --create CsCl 3.0 Ni Ti orient $ORIENTATION_STRING -duplicate $X $Y $Z pos
+
+#     mv POSCAR "$STRUCTURE_NAME.pos"
+#     mv "$STRUCTURE_NAME.pos" structure/
+#     python "$USER_DIR/HEA_gen.py" "$STRUCTURE_NAME" "$TOTAL_ATOM"
+#     if [ $? -eq 0 ]; then
+#         echo "success"
+#     else
+#         echo "fail"
+#         exit 1
+#     fi
+#     mv "$STRUCTURE_NAME.lmp" structure/
+#     echo "Structure generated and moved to structure/ directory."
+# else
+#     echo "Structure file '$STRUCTURE_NAME.pos' already exists in the 'structure' directory."
+# fi
+#------------------------------------------------------------------------------------------------#
+cd "./$SESSION_NAME" || exit 1
+
+X_DUPLICATION=2
+CURRENT_DIRECTORY=$(pwd)
+echo $CURRENT_DIRECTORY
+if [[ $SESSION_NAME == *"_mc"* ]]; then
+        echo "SESSION_NAME contains 'mc'"
+        
+        # Extract the part before "_mc"
+        PREFIX=${SESSION_NAME%%_mc*}
+        
+        # Extract the temperature before "mc" (assuming it ends with 'k')
+        TEMP_BEFORE=$(echo "$PREFIX" | grep -o '[0-9]\+k$')
+        
+        # Extract the part after "_mc"
+        SUFFIX=${SESSION_NAME#*_mc}
+        
+        # Extract the temperature after "mc" (assuming it ends with 'k')
+        TEMP_AFTER=$(echo "$SUFFIX" | grep -o '^[0-9]\+k')
+        
+        # Extract the part after the second temperature
+        REMAINING=${SUFFIX#$TEMP_AFTER}
+        
+        # Create the new session name by replacing the temperature
+        # Remove the old temperature from PREFIX
+        NEW_PREFIX=${PREFIX%$TEMP_BEFORE}
+        
+        # Construct the new name
+        NEW_SESSION_NAME="${NEW_PREFIX}${TEMP_AFTER}${REMAINING}"
+        
+        echo "Original SESSION_NAME: $SESSION_NAME"
+        echo "New SESSION_NAME: $NEW_SESSION_NAME"
+        fi
+        
+if [ "$SIMULATION_MODE" = "relax" ]; then
+    STRUCTURE_PATH="monte_carlo/MC_5quinary/$ALLOY_ORIENTATION/$NEW_SESSION_NAME/mc_folder/emin.data"
+    cp $STRUCTURE_PATH .
+    atomsk emin.data -duplicate $X_DUPLICATION 1 1 lmp temp.lmp && mv temp.lmp emin_duplicated.data
+    cp "$USER_DIR/in.relax.5quinary.var.$ALLOY" .
+    sed -e "s|{{structure_path}}|./emin_duplicated.data|g" \
+        -e "s|{{var_num}}|$VAR_NUM|g" \
+        -e "s|{{session_name}}|$SESSION_NAME|g" \
+        -e "s|{{run}}|$RUN|g" \
+        -e "s|{{temperature}}|$TEMPERATURE|g" \
+        -e "s|{{user_dir}}|$USER_DIR|g" \
+        "in.relax.5quinary.var.$ALLOY" > "in.relax.$ALLOY.$SESSION_NAME"
+elif [ "$SIMULATION_MODE" = "compress" ]; then
+    STRUCTURE_PATH="$USER_DIR/relax/$ALLOY_ORIENTATION/5quinary/$SESSION_NAME/after_relax.data"
+    echo $STRUCTURE_PATH
+    if [ ! -f "$STRUCTURE_PATH" ]; then
+    echo "relax haven't been done"
+    exit 1
+    fi
+    cp "$USER_DIR/in.compress.5quinary.var.$ALLOY" .
+    sed -e "s|{{structure_path}}|$STRUCTURE_PATH|g" \
+        -e "s|{{var_num}}|$VAR_NUM|g" \
+        -e "s|{{session_name}}|$SESSION_NAME|g" \
+        -e "s|{{run}}|$RUN|g" \
+        -e "s|{{temperature}}|$TEMPERATURE|g" \
+        -e "s|{{alloy}}|$ALLOY|g" \
+        -e "s|{{user_dir}}|$USER_DIR|g" \
+        "in.compress.5quinary.var.$ALLOY" > "in.compress.$ALLOY.$SESSION_NAME"
+elif [ "$SIMULATION_MODE" = "tension" ]; then
+    # STRUCTURE_PATH="$USER_DIR/relax/$ALLOY_ORIENTATION/$SESSION_NAME/after_relax.data"
+    STRUCTURE_PATH="$USER_DIR/relax/$ALLOY_ORIENTATION/var${VAR_NUM}_${TOTAL_ATOM}_${TEMPERATURE}k/after_relax.data"
+    echo $STRUCTURE_PATH
+    if [ ! -f "$STRUCTURE_PATH" ]; then
+    echo "relax haven't been done"
+    exit 1
+    fi
+    cp "$USER_DIR/in.tension.var.$ALLOY" .
+    sed -e "s|{{structure_path}}|$STRUCTURE_PATH|g" \
+        -e "s|{{var_num}}|$VAR_NUM|g" \
+        -e "s|{{session_name}}|$SESSION_NAME|g" \
+        -e "s|{{run}}|$RUN|g" \
+        -e "s|{{temperature}}|$TEMPERATURE|g" \
+        -e "s|{{alloy}}|$ALLOY|g" \
+        -e "s|{{user_dir}}|$USER_DIR|g" \
+        "in.tension.var.$ALLOY" > "in.tension.$ALLOY.$SESSION_NAME"
+fi
+
+if [ "$(hostname)" = "amd01" ]; then
+    read -p "Enter the core to use: " CORE
+    cd $CURRENT_DIRECTORY
+    nohup mpirun -np $CORE /home/cnnltmp01/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_v100 -in in.${SIMULATION_MODE}.$ALLOY.$SESSION_NAME > STDOUT &
+    echo "-----------------------------------------"
+    echo "Info of this session: "
+    ps aux | grep in.$SIMULATION_MODE.$ALLOY.$SESSION_NAME
+    echo "-----------------------------------------"
+    echo "Info of all session: "
+    ps aux | grep mpirun
+elif [ "$(hostname)" = "sophon" ]; then
+    echo "ssh to amd01 and run the following command:"
+    echo "cd $CURRENT_DIRECTORY"
+    echo "nohup mpirun -np $CORE /home/cnnltmp02/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_v100 -in in.$SIMULATION_MODE.$ALLOY.$SESSION_NAME > STDOUT &"
+elif [ "$(hostname)" = "gpu04" ]; then
+    cd $CURRENT_DIRECTORY
+    read -p "Enter the gpu number: " NUM_GPU
+    export CUDA_VISIBLE_DEVICES=$NUM_GPU
+    nohup mpirun -np 1 -cpu-set $NUM_GPU ~/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_v100 -k on g 1 -sf kk -pk kokkos newton on neigh half -in in.${SIMULATION_MODE}.$ALLOY.$SESSION_NAME > STDOUT &
+    echo "-----------------------------------------"
+    echo "Info of this session: "
+    ps aux | grep in.${SIMULATION_MODE}z.$ALLOY.$SESSION_NAME
+    echo "-----------------------------------------"
+    echo "Info of all session: "
+    ps aux | grep mpirun
+elif [ "$(hostname)" = "gpu02" ]; then
+    cd $CURRENT_DIRECTORY
+    read -p "Enter the gpu number: " NUM_GPU
+    export CUDA_VISIBLE_DEVICES=$NUM_GPU
+    nohup mpirun -np 1 -cpu-set $NUM_GPU ~/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_a100 -k on g 1 -sf kk -pk kokkos newton on neigh half -in in.${SIMULATION_MODE}z.$ALLOY.$SESSION_NAME > STDOUT &
+    echo "-----------------------------------------"
+    echo "Info of this session: "
+    ps aux | grep in.$SIMULATION_MODE.$ALLOY.$SESSION_NAME
+    echo "-----------------------------------------"
+    echo "Info of all session: "
+    ps aux | grep mpirun
+elif [ "$(hostname)" = "gpu03" ]; then
+    cd $CURRENT_DIRECTORY
+    read -p "Enter the gpu number: " NUM_GPU
+    export CUDA_VISIBLE_DEVICES=$NUM_GPU
+    nohup mpirun -np 1 -cpu-set $NUM_GPU /home/cnnltmp01/Downloads/lammps-stable_2Aug2023_update3/src/lmp_kokkos_cuda_p100 -k on g 1 -sf kk -pk kokkos newton on neigh half -in in.${SIMULATION_MODE}.$ALLOY.$SESSION_NAME > STDOUT &
+    echo "-----------------------------------------"
+    echo "Info of this session: "
+    ps aux | grep in.$SIMULATION_MODE.$ALLOY.$SESSION_NAME
+    echo "-----------------------------------------"
+    echo "Info of all session: "
+    ps aux | grep mpirun
+fi
+
+exit 0
